@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: ambassador-app
+spec:
+  containers:
+  - name: main-app
+    image: nigelpoulton/curl:1.0
+    command: ["sleep", "3600"]
+  - name: ambassador
+    image: nigelpoulton/nginx-ambassador:1.0

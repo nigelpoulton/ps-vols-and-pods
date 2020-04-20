@@ -1,0 +1,130 @@
+kind: StorageClass
+apiVersion: storage.k8s.io/v1
+metadata:
+  name: finale1-gcp-pd
+provisioner: kubernetes.io/aws-ebs
+volumeBindingMode: WaitForFirstConsumer
+parameters:
+  type: io1
+  iopsPerGB: "10"
+  fsType: ext4
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: reader
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  namespace: default
+  name: pvc-ro
+rules:
+- apiGroups: [""]
+  resources: ["persistentvolumeclaims"]
+  verbs: ["get", "watch", "list"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: pvc-ro
+  namespace: default
+subjects:
+- kind: ServiceAccount
+  name: "reader"
+  namespace: default
+roleRef:
+  kind: Role 
+  name: pvc-ro 
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: pvc-finale-1
+spec:
+  accessModes:
+  - ReadWriteOnce
+  storageClassName: finale1-gcp-pd
+  resources:
+    requests:
+      storage: 25Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: finale-svc
+spec:
+  selector:
+    app: finale-1
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 80
+  type: LoadBalancer
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: finale-1
+  labels:
+    app: finale-1
+spec:
+  serviceAccountName: reader
+  volumes:
+  - name: pvc-finale-1
+#    emptyDir: {}
+    persistentVolumeClaim:
+      claimName: pvc-finale-1
+  securityContext:
+    fsGroup: 0
+f    runAsUser: 0
+  initContainers:
+  - name: init-pv  # Looks for PV
+    image: nigelpoulton/k8s-api-proxy:1.0
+    command: ["sh", "-c"]
+    args: ["until kubectl get pvc pvc-finale-1; do echo waiting for PVC; sleep 1; done; echo PVC found!"]
+  - name: init-sync   # Does an initial sync from GH
+    image: k8s.gcr.io/git-sync:v3.1.5
+    volumeMounts:
+    - name: pvc-finale-1
+      mountPath: "/tmp/git"
+      readOnly: false
+    env:
+    - name: GIT_SYNC_REPO
+      value: https://github.com/nigelpoulton/ps-sidecar.git
+    - name: GIT_SYNC_BRANCH
+      value: master
+    - name: GIT_SYNC_DEPTH
+      value: "1"
+    - name: GIT_SYNC_ROOT
+      value: "/tmp/git"
+    - name: GIT_SYNC_DEST
+      value: "html"
+    - name: GIT_SYNC_ONE_TIME
+      value: "true"  
+  - name: init-svc  # Looks for Service called finale-svc
+    image: busybox
+    command: ['sh', '-c', 'until nslookup finale-svc; do echo waiting for finale-svc service; sleep 1; done; echo Service found!']  
+  containers:
+  - name: app
+    image: nginx
+    ports:
+      - containerPort: 80
+    volumeMounts:
+      - mountPath: "/usr/share/nginx"
+        name: pvc-finale-1
+  - name: sidecar-sync
+    image: k8s.gcr.io/git-sync:v3.1.5
+    volumeMounts:
+    - name: pvc-finale-1
+      mountPath: "/tmp"
+    env:
+    - name: GIT_SYNC_REPO
+      value: https://github.com/nigelpoulton/ps-sidecar.git
+    - name: GIT_SYNC_BRANCH
+      value: master
+    - name: GIT_SYNC_DEPTH
+      value: "1"
+    - name: GIT_SYNC_DEST
+      value: "html"

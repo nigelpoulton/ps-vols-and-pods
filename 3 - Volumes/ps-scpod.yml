@@ -1,0 +1,58 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: pvc-htmlvol
+spec:
+  storageClassName: "ps-gcp-fast"
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 25Gi
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: sc-pod
+  labels:
+    app: stg
+spec:
+  volumes:
+    - name: htmlvol
+      persistentVolumeClaim:
+        claimName: pvc-htmlvol
+  containers:
+    - name: main-ctr
+      image: nginx
+      ports:
+        - containerPort: 80
+          name: "http-server"
+      volumeMounts:
+        - mountPath: "/usr/share/nginx/html"
+          name: htmlvol
+    - name: helper-ctr
+      image: ubuntu
+      command:
+      - /bin/bash
+      - "-c"
+      - "sleep 60m"
+      volumeMounts:
+      - mountPath: /data
+        name: htmlvol
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: lb
+spec:
+  selector:
+    app: stg
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 80
+  type: LoadBalancer
+
+
+
+

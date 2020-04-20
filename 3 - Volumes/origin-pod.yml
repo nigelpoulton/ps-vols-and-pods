@@ -1,0 +1,31 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: origin-pvc
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: clone-sc
+  resources:
+    requests:
+      storage: 10Gi
+---
+kind: Pod
+apiVersion: v1
+metadata:
+  name: origin-pod
+spec:
+  volumes:
+    - name: origin-vol
+      persistentVolumeClaim:
+        claimName: origin-pvc
+  containers:
+    - name: main-ctr
+      image: ubuntu
+      command:
+      - /bin/bash
+      - "-c"
+      - "sleep 60m"
+      volumeMounts:
+      - mountPath: /data
+        name: origin-vol

@@ -1,0 +1,23 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  namespace: default
+  name: svc-ro
+rules:
+- apiGroups: [""]
+  resources: ["services"]
+  verbs: ["get", "watch", "list"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: svc-ro
+  namespace: default
+subjects:
+- kind: ServiceAccount
+  name: "service-reader"
+  namespace: default
+roleRef:
+  kind: Role 
+  name: svc-ro 
+  apiGroup: rbac.authorization.k8s.io

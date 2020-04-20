@@ -1,0 +1,41 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: git-syncer
+  labels:
+	app: git-syncer
+spec:
+  containers:
+  - image: nginx
+	  name: web
+	  volumeMounts:
+	  - name: html
+	    mountPath: /usr/share/nginx/
+  - image: k8s.gcr.io/git-sync:v3.1.5
+	  name: init-sync-ctr
+	  volumeMounts:
+	  - name: html
+	    mountPath: /tmp/git
+	  env:
+  	- name: GIT_SYNC_REPO
+	    value: https://github.com/nigelpoulton/ps-sidecar.git
+  	- name: GIT_SYNC_BRANCH
+	    value: master
+  	- name: GIT_SYNC_DEPTH
+	    value: "1"
+  	- name: GIT_SYNC_DEST
+	    value: "html"
+  volumes:
+  - name: html
+	emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: git-syncer
+spec:
+  selector:
+	  app: git-syncer
+  ports:
+  - port: 80
+  type: LoadBalancer

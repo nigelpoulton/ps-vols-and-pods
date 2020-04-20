@@ -1,0 +1,25 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: external-app
+  labels:
+    app: ambassador
+spec:
+  containers:
+  - name: nginx-outside
+    image: nigelpoulton/nginx-outside:1.0
+    ports:
+    - containerPort: 80
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ps-ambassador
+spec:
+  selector:
+    app: ambassador
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 80
+  type: LoadBalancer
