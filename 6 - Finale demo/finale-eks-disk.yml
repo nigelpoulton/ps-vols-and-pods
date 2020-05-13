@@ -78,7 +78,7 @@ spec:
       claimName: pvc-finale-1
   securityContext:
     fsGroup: 0
-f    runAsUser: 0
+    runAsUser: 0
   initContainers:
   - name: init-pv  # Looks for PV
     image: nigelpoulton/k8s-api-proxy:1.0
